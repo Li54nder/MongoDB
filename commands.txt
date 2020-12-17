@@ -1,0 +1,58 @@
+
+show dbs
+use DATABASE_NAME
+db.dropDatabase()
+
+show collections
+db.createCollection(name, options)
+db.collection_name.insert(json)		- kreiraće kolekciju ako ne postoji i ubaciti json dokument, json moze biti niz 	+ 	insertOne() & insertMany()
+db.collection_name.drop() 			- obrisaće kolekciju 
+db.collection_name.save(json string)  	- radi isto kao insert osim ukoliko se navede _id onda radi ažuriranje postojećeg dokumenta
+
+
+PRONALAZAK:
+
+db.collection_name.find({}) 			- vraća sve dokumente u kolekciji - db.studenti.find({fakultet:”PMF”})
+
+upit može sadržati neke operatore i onda je sintaksa oblika: 
+	{ <field1>: { <operator1>: <value1> }, ... }
+		operatori mogu biti:
+			relacioni : $lt,$gt,$lte,$gte,$ne
+			skupovni: $all, $in, $nin, $exists
+			logički: $or, $not, $and, $nor
+
+# COUNT, SUM, AVERAGE, ...
+
+db.studenti.find({“adresa.grad”:”Novi Sad”})	- pristup ugnježđenim elementima json objekta
+
+db.studenti.find({obavezniPredmeti: [“SPA2”, “OOP1”]})		- pristup elementima niza (upit je oblika ključ: vrednost, stim da je vrednost neki niz i mora se poštovati redosled)
+db.studenti.find({obavezniPredmeti: {$in:[“SPA2”, “OOP1”]}})		- možemo primeniti i skupovne operatore nad vrednostima nekog niza
+	- $elemMatch	- ukoliko želimo da se u jednom polju tipa niz zadovolji više kriterijuma
+	
+db.inventory.find( { status: "A" }, { status: 0, instock: 0 } ) 	- isključiće ova polja a vratiti sva ostala
+db.inventory.find( { status: "A" }, { status: 1, instock: 1 } ) 	- vratiće samo ova polja
+
+
+
+
+AZURIRANJE:
+
+db.ime_kolekcije.update()
+db.studenti.update({ime:“Pera“},{$set:{budzet:true}})
+db.studenti.update({ime:“Pera“},{$unset:{godina:true}})
+	- modifikatori mogu biti $set, $unset, $push, $addToSet, $inc, $pop...
+	- postoji i operacija replaceOne(json) - koja menja čitav dokument novim
+
+
+
+	
+BRISANJE: 
+db.collection_name.remove() 				- briše sve dokumente iz kolekcije
+db.collection_name.remove(upit) 			- briše dokumente koji zadovoljavaju upit
+db.collection_name.remove(upit,samo_prvi_fleg) 	- briše prvi dokument koji zadovoljava uslov
+	- postoje i komande delete, deleteOne, deleteMany
+
+
+
+
+.find({created: {$gt: '2012-01-01'}}

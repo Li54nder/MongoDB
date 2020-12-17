@@ -1,0 +1,109 @@
+// Pirkazati 10 onih sa najvecim brojem povredjenih ali bez fatalnih posledica
+db.Landslide.aggregate(
+    [
+        {$match: {fatality_count: {$eq: 0}}},
+        {$sort: {injury_count: -1}},
+        {$limit: 10},
+        {$project: { title : 1}}
+    ])
+    
+// Prikazati sve kategorije i prebrojati koliko kojih ima
+db.Landslide.aggregate([
+        {$group: {
+            _id: '$category',
+            count: { $sum: 1}
+        }},
+        {$sort: {count: -1}}
+    ])
+
+
+// Prikazati slucajeve iz Srbije i hrvatske gde nije bilo ni povredjenih ni stradalih
+db.Landslide.aggregate(
+    [
+        {$match: {
+            $and: [
+                {'location.country.name': {$in: ["Serbia", "Croatia"]}}, 
+                {$and: [
+                    {injury_count: {$eq: 0}}, 
+                    {fatality_count: {$eq: 0}}
+                ]}
+            ]}
+    ])
+
+// Grupisati po godini koliko je bilo klizista i koliko smrtnih ishoda, pa ispisati onih 10 sa najvecim brojem
+db.Landslide
+    .aggregate([
+        {$group: {
+            _id: { $substr : ["$date", 0, 4 ] },
+            count: { $sum: 1 },
+            fatality_count: { $sum: '$fatality_count' }
+        }},
+        {$sort: {fatality_count:-1}},
+        {$limit: 10}
+    ])
+
+// Za koje sve godine postoje zahtevi za unose u bazu
+db.Landslide.aggregate([
+        {$match: {'archiving.submitted_date': {$ne: null}}},
+        {$group: {_id: { $substr : ["$archiving.submitted_date", 0, 4] }}}
+    ])
+
+
+
+// MAP-REDUCE... 
+
+// Prosecan broj stradalih po tipu klizista
+let mapF = function() {
+    emit(this.category, this.fatality_count)
+}
+let reduceF = function(key, values) {
+    let sum = 0;
+    for(let i = 0; i < values.length; i++) {
+        sum += values[i];
+    }
+    return sum / values.length;
+}
+db.Landslide.mapReduce(mapF, reduceF, {out: 'avgFatality'})
+
+// Prikazati za svaku drzavu odnos stradalih i povredjenih
+var mapF = function() {
+    var stats={fatality: this.fatality_count, injury: this.injury_count}
+    emit(this.location.country.name, stats);
+}
+var reduceF = function(key, values){
+    var sumFat=0; var sumInj=0;
+    for (let i = 0; i < values.length; i++) {
+        sumFat+=values[i].fatality; 
+        sumInj+=values[i].injury;
+    }
+    if (sumInj == 0)
+        return 0;
+    return sumFat/sumInj;
+}
+var finalizeF = function(key, value){
+    if(value.hasOwnProperty("fatality")) {
+        if (value.injury == 0){
+            return 0;
+        }
+        return value.fatality/value.injury;
+    } else {
+        return value;
+    }
+}
+db.Landslide.mapReduce(mapF, reduceF, {out:"statsByCountry",finalize:finalizeF})
+
+
+
+
+// Pitanje:
+db.Landslide.aggregate([
+        {$group: {
+            _id: "$location.country.name",
+            count: {$sum: 1}
+        }
+        {$match: {"_id": {$ne: ""}}},
+        {$sort: {"count": 1}}    
+            
+        }
+    ])
+
